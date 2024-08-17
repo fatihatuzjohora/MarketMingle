@@ -7,8 +7,6 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const dotenv = require("dotenv");
 dotenv.config();
 
-
-
 app.use(cors());
 app.use(express.json());
 
@@ -39,73 +37,91 @@ async function run() {
 
     // Get products with pagination, search, sorting
     app.get("/api/products", async (req, res) => {
-        try {
-          const {
-            page = 1,
-            limit = 10,
-            search = "",
-            category = "",
-            sortBy = "createdAt",
-            sortOrder = "desc",
-          } = req.query;
-      
-          const query = {};
-          if (search) {
-            query.$or = [
-              { productName: { $regex: search, $options: "i" } },
-              { description: { $regex: search, $options: "i" } },
-              { categories: { $regex: search, $options: "i" } }
-            ];
-          }
-          if (category) {
-            query.categories = category;
-          }
-      
-          const sortOptions = {};
-          if (sortBy === "price") {
-            sortOptions.price = sortOrder === "asc" ? 1 : -1;
-          } else if (sortBy === "createdAt") {
-            sortOptions.createdAt = sortOrder === "asc" ? 1 : -1;
-          }
-      
-          const products = await collection
-            .find(query)
-            .sort(sortOptions)
-            .skip((page - 1) * limit)
-            .limit(parseInt(limit))
-            .toArray();
-          const totalProducts = await collection.countDocuments(query);
-      
-          res.json({
-            products,
-            totalPages: Math.ceil(totalProducts / limit),
-            currentPage: parseInt(page),
-          });
-        } catch (error) {
-          res.status(500).json({ message: error.message });
+      try {
+        const {
+          page = 1,
+          limit = 10,
+          search = "",
+          category = "",
+          sortBy = "createdAt",
+          sortOrder = "desc",
+        } = req.query;
+
+        const query = {};
+        if (search) {
+          query.$or = [
+            { productName: { $regex: search, $options: "i" } },
+            { description: { $regex: search, $options: "i" } },
+            { categories: { $regex: search, $options: "i" } },
+          ];
         }
-      });
-      
+        if (category) {
+          query.categories = category;
+        }
 
-      app.get("/api/categories", async (req, res) => {
-        try {
-          const products = await collection.find().toArray();
+        const sortOptions = {};
+        if (sortBy === "price") {
+          sortOptions.price = sortOrder === "asc" ? 1 : -1;
+        } else if (sortBy === "createdAt") {
+          sortOptions.createdAt = sortOrder === "asc" ? 1 : -1;
+        }
 
-          const categories = products.reduce((acc, product) => {
-            product.categories.forEach((cat) => {
-                if (!acc.includes(cat)) {
-                    acc.push(cat);
-                }
-            });
-            return acc;
+        const products = await collection
+          .find(query)
+          .sort(sortOptions)
+          .skip((page - 1) * limit)
+          .limit(parseInt(limit))
+          .toArray();
+        const totalProducts = await collection.countDocuments(query);
+
+        res.json({
+          products,
+          totalPages: Math.ceil(totalProducts / limit),
+          currentPage: parseInt(page),
+        });
+      } catch (error) {
+        res.status(500).json({ message: error.message });
+      }
+    });
+
+    app.get("/api/categories", async (req, res) => {
+      try {
+        const products = await collection.find().toArray();
+
+        const categories = products.reduce((acc, product) => {
+          product.categories.forEach((cat) => {
+            if (!acc.includes(cat)) {
+              acc.push(cat);
+            }
+          });
+          return acc;
         }, []);
 
+        res.json(categories);
+      } catch (error) {
+        res.status(500).json({ message: error.message });
+      }
+    });
 
-          res.json(categories);
-        } catch (error) {
-          res.status(500).json({ message: error.message });
-        }
-      })
+
+    app.get("/api/featured-products", async (req, res) => {
+      try {
+        const { minRating = 0, limit = 10 } = req.query;
+
+        const query = {
+          averageRating: { $gte: parseFloat(minRating) },
+        };
+
+        const products = await collection
+          .find(query)
+          .limit(parseInt(limit))
+          .toArray();
+
+        res.json(products);
+      } catch (error) {
+        res.status(500).json({ message: error.message });
+      }
+    });
 
     // Bulk insert endpoint
     app.post("/api/products/bulk-insert", async (req, res) => {
@@ -138,7 +154,14 @@ async function run() {
     // Create a new product
     app.post("/api/products", async (req, res) => {
       try {
-        const { productName, productImage, description, price, category, averageRating } = req.body;
+        const {
+          productName,
+          productImage,
+          description,
+          price,
+          category,
+          averageRating,
+        } = req.body;
 
         const newProduct = {
           productName,
@@ -158,10 +181,10 @@ async function run() {
         });
       } catch (error) {
         res.status(500).json({
-            success: false,
-            message: error.message,
-            error: error
-         });
+          success: false,
+          message: error.message,
+          error: error,
+        });
       }
     });
 
@@ -185,9 +208,9 @@ async function run() {
       }
     });
 
-    app.get('/', (req, res) => {
-      res.send('Hello World!')
-    })
+    app.get("/", (req, res) => {
+      res.send("Hello World!");
+    });
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
