@@ -38,51 +38,57 @@ async function run() {
     // Get products with pagination, search, sorting
     app.get("/api/products", async (req, res) => {
       try {
-        const {
-          page = 1,
-          limit = 10,
-          search = "",
-          category = "",
-          sortBy = "createdAt",
-          sortOrder = "desc",
-        } = req.query;
-
-        const query = {};
-        if (search) {
-          query.$or = [
-            { productName: { $regex: search, $options: "i" } },
-            { description: { $regex: search, $options: "i" } },
-            { categories: { $regex: search, $options: "i" } },
-          ];
-        }
-        if (category) {
-          query.categories = category;
-        }
-
-        const sortOptions = {};
-        if (sortBy === "price") {
-          sortOptions.price = sortOrder === "asc" ? 1 : -1;
-        } else if (sortBy === "createdAt") {
-          sortOptions.createdAt = sortOrder === "asc" ? 1 : -1;
-        }
-
-        const products = await collection
-          .find(query)
-          .sort(sortOptions)
-          .skip((page - 1) * limit)
-          .limit(parseInt(limit))
-          .toArray();
-        const totalProducts = await collection.countDocuments(query);
-
-        res.json({
-          products,
-          totalPages: Math.ceil(totalProducts / limit),
-          currentPage: parseInt(page),
-        });
+          const {
+              page = 1,
+              limit = 12,
+              search = "",
+              category = "",
+              minPrice = 0,
+              maxPrice = Infinity,
+              sortBy = "createdAt",
+              sortOrder = "desc",
+          } = req.query;
+  console.log(req.query);
+          const query = {};
+          if (search) {
+              query.$or = [
+                  { productName: { $regex: search, $options: "i" } },
+                  { description: { $regex: search, $options: "i" } },
+                  { categories: { $regex: search, $options: "i" } },
+              ];
+          }
+          if (category) {
+              query.categories = category;
+          }
+          if (minPrice && maxPrice) {
+              query.price = { $gte: parseFloat(minPrice), $lte: parseFloat(maxPrice) };
+          }
+  
+          const sortOptions = {};
+          if (sortBy === "price") {
+              sortOptions.price = sortOrder === "asc" ? 1 : -1;
+          } else if (sortBy === "createdAt") {
+              sortOptions.createdAt = sortOrder === "asc" ? 1 : -1;
+          }
+  
+          const products = await collection
+              .find(query)
+              .sort(sortOptions)
+              .skip((page - 1) * limit)
+              .limit(parseInt(limit))
+              .toArray();
+          const totalProducts = await collection.countDocuments(query);
+  
+          res.json({
+              products,
+              totalPages: Math.ceil(totalProducts / limit),
+              currentPage: parseInt(page),
+          });
       } catch (error) {
-        res.status(500).json({ message: error.message });
+          res.status(500).json({ message: error.message });
       }
-    });
+  });
+  
 
     app.get("/api/categories", async (req, res) => {
       try {
