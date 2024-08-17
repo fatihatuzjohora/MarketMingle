@@ -87,6 +87,26 @@ async function run() {
       });
       
 
+      app.get("/api/categories", async (req, res) => {
+        try {
+          const products = await collection.find().toArray();
+
+          const categories = products.reduce((acc, product) => {
+            product.categories.forEach((cat) => {
+                if (!acc.includes(cat)) {
+                    acc.push(cat);
+                }
+            });
+            return acc;
+        }, []);
+
+
+          res.json(categories);
+        } catch (error) {
+          res.status(500).json({ message: error.message });
+        }
+      })
+
     // Bulk insert endpoint
     app.post("/api/products/bulk-insert", async (req, res) => {
       try {
